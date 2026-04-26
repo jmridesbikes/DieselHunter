@@ -4,26 +4,19 @@ import { ActivityIndicator, StyleSheet, Text, View, Platform } from 'react-nativ
 import * as Location from 'expo-location';
 import { fetchStationsInBbox } from '../lib/api';
 import { bboxFromCorners } from '../lib/bbox';
-import { isMapboxNativeAvailable } from '../lib/isMapboxNativeAvailable';
-import { supabase } from '../lib/supabase';
+import { hasSupabaseClientConfig, supabase } from '../lib/supabase';
 import type { StationLatestRow } from '../types/station';
 import { StationBottomSheet } from './StationBottomSheet';
 import { useAuth } from '../hooks/useAuth';
+import { RNMapsMapView } from './RNMapsMapView';
 
-// Conditional require: only one implementation loads. Do not import @rnmapbox/maps in Expo Go, and
-// do not import map native modules for web.
 function WebMapPlaceholder() {
   return null;
 }
-const MapViewImpl =
-  Platform.OS === 'web'
-    ? WebMapPlaceholder
-    : isMapboxNativeAvailable
-      ? require('./MapboxMapView').MapboxMapView
-      : require('./RNMapsMapView').RNMapsMapView;
+
+const MapViewImpl = Platform.OS === 'web' ? WebMapPlaceholder : RNMapsMapView;
 
 const defaultCenter: [number, number] = [18.4241, -33.9249];
-const mapboxToken = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
 
 const DEBOUNCE_MS = 400;
 
@@ -43,10 +36,7 @@ export function MapScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeq = useRef(0);
 
-  const hasConfig = useMemo(
-    () => Boolean(process.env.EXPO_PUBLIC_SUPABASE_URL && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
-    []
-  );
+  const hasConfig = useMemo(() => hasSupabaseClientConfig(), []);
 
   const loadBbox = useCallback(async () => {
     if (!ready || !userId) return;
@@ -137,19 +127,7 @@ export function MapScreen() {
   if (Platform.OS === 'web') {
     return (
       <View style={styles.centered}>
-        <Text style={styles.hint}>
-          DieselHunter is built for iOS and Android. System maps (Expo Go) or Mapbox (dev build).
-        </Text>
-      </View>
-    );
-  }
-
-  if (isMapboxNativeAvailable && !mapboxToken) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.hint}>
-          Set EXPO_PUBLIC_MAPBOX_TOKEN in your environment (and rebuild native projects).
-        </Text>
+        <Text style={styles.hint}>DieselHunter is built for iOS and Android (Apple / Google Maps).</Text>
       </View>
     );
   }
@@ -158,7 +136,8 @@ export function MapScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.hint}>
-          Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env
+          Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or legacy
+          EXPO_PUBLIC_SUPABASE_ANON_KEY) in .env
         </Text>
       </View>
     );
@@ -168,7 +147,7 @@ export function MapScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.err}>Auth: {authError.message}</Text>
-        <Text style={styles.hint}>Enable anonymous sign-in in the Supabase dashboard.</Text>
+        <Text style={styles.hint}>Enable anonymous sign-in in the Supabase dashboard (Authentication → Providers).</Text>
       </View>
     );
   }
@@ -182,27 +161,16 @@ export function MapScreen() {
     );
   }
 
-  const mapKey = isMapboxNativeAvailable ? 'mapbox' : 'rn-maps';
-
   return (
     <BottomSheetModalProvider>
       <View style={styles.root}>
         <MapViewImpl
-          key={mapKey}
           center={center}
           locationReady={locationReady}
           stations={stations}
           onBoundsFromMap={onBoundsFromMap}
           onMarkerPress={openSheet}
         />
-
-        {!isMapboxNativeAvailable && (
-          <View style={styles.modeBanner}>
-            <Text style={styles.modeText}>
-              System maps (Expo Go). For Mapbox, run: npx expo prebuild, then npx expo run:ios
-            </Text>
-          </View>
-        )}
 
         {loading && (
           <View style={styles.loadingBar}>
@@ -234,16 +202,6 @@ const styles = StyleSheet.create({
   centered: { flex: 1, backgroundColor: '#0f1419', justifyContent: 'center', padding: 24 },
   hint: { color: '#9aa5bf', textAlign: 'center', lineHeight: 22 },
   err: { color: '#fca5a5' },
-  modeBanner: {
-    position: 'absolute',
-    top: 52,
-    left: 12,
-    right: 12,
-    backgroundColor: 'rgba(15,20,25,0.92)',
-    padding: 8,
-    borderRadius: 8,
-  },
-  modeText: { color: '#94a3b8', fontSize: 12, textAlign: 'center' },
   loadingBar: {
     position: 'absolute',
     top: 100,

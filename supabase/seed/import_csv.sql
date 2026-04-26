@@ -3,6 +3,9 @@
 -- Or use: Table Editor → stations → Import data from CSV
 -- Manual SQL copy pattern (edit paths / use psql \copy from local file):
 -- \copy public.stations (name, latitude, longitude) from 'stations_import_template.csv' with (format csv, header true);
+--
+-- Large OSM fuel-point seed (insert statements): run FuelPointsSeed.sql in the SQL Editor
+-- after migrations. Re-run safely only after deleting dependent rows (see header in that file).
 
 -- Example: insert from values if you have many rows from Excel:
 -- insert into public.stations (name, latitude, longitude) select ...

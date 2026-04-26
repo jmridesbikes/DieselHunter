@@ -1,4 +1,4 @@
-/** Mapbox map bounds: ne, sw in [lng, lat] */
+/** Map bounds: ne, sw in [lng, lat] */
 export function bboxFromCorners(
   ne: [number, number] | number[],
   sw: [number, number] | number[]

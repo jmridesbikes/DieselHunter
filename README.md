@@ -8,23 +8,12 @@ Crowdsourced diesel price map for South Africa — **React Native (Expo)** + **S
 |------|--------|
 | [`supabase/migrations/`](supabase/migrations/) | Database schema, RLS, and `station_latest_prices_with_confidence` view |
 | [`supabase/seed/`](supabase/seed/) | Sample stations and CSV import notes |
-| [`mobile/`](mobile/) | Expo app (Mapbox map, bottom sheet, realtime) |
+| [`mobile/`](mobile/) | Expo app (`react-native-maps`, bottom sheet, realtime) |
 
 ## Prerequisites
 
 - Node 20+ / npm
 - A [Supabase](https://supabase.com) project
-- A [Mapbox](https://mapbox.com) access token (`pk.…`)
-- **iOS / Android** — The app **falls back to Apple / Google Maps** (`react-native-maps`) in **Expo Go** when Mapbox native code is missing. For **Mapbox**, use a **development build** (prebuild) so `RNMBXModule` is linked:
-
-  ```bash
-  cd mobile
-  npx expo prebuild
-  npx expo run:android
-  # or: npx expo run:ios   (macOS + Xcode)
-  ```
-
-  Or [EAS Build](https://docs.expo.dev/build/introduction/) to produce installable binaries.
 
 **Expo Go + Reanimated 4:** `react-native-worklets` must match the version **bundled in Expo Go** (see `bundledNativeModules` for your SDK, e.g. `0.5.1` for SDK 54). A wrong transitive version causes `[runtime not ready]`, `NativeWorklets`, or `Exception in HostFunction` on launch. The app pins this dependency explicitly; if you change SDK, run `npx expo install react-native-worklets` after upgrading.
 
@@ -36,7 +25,7 @@ Crowdsourced diesel price map for South Africa — **React Native (Expo)** + **S
 
    - [`supabase/migrations/20260126000000_init.sql`](supabase/migrations/20260126000000_init.sql)
 
-3. **Authentication → Providers → Anonymous**: enable **anonymous sign-ins**.
+3. **Authentication → Providers → Anonymous**: enable **anonymous sign-ins** (required — without this the app shows an auth error after launch).
 
 4. **Table Editor** (optional): run seed data:
 
@@ -55,6 +44,16 @@ Crowdsourced diesel price map for South Africa — **React Native (Expo)** + **S
    alter publication supabase_realtime add table public.votes;
    ```
 
+### Verify the database
+
+After step 2, confirm the view exists: **SQL Editor** → run `select 1 from public.station_latest_prices_with_confidence limit 1;` (expect success or empty result, not “relation does not exist”). If the view is missing, re-run [`20260126000000_init.sql`](supabase/migrations/20260126000000_init.sql).
+
+### API keys (publishable vs legacy)
+
+- **Project Settings → API** → copy **Project URL** (`https://<ref>.supabase.co`), not the dashboard URL.
+- **Project Settings → API Keys**: use the **Publishable** key (`sb_publishable_...`) in the app. It replaces the legacy **anon** key; either works with `createClient` (see [`mobile/lib/supabase.ts`](mobile/lib/supabase.ts)).
+- Never put the **Secret** or **service_role** key in the mobile app.
+
 ## App configuration
 
 1. Copy env file:
@@ -64,18 +63,18 @@ Crowdsourced diesel price map for South Africa — **React Native (Expo)** + **S
    cp .env.example .env
    ```
 
-2. Fill in `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, and `EXPO_PUBLIC_MAPBOX_TOKEN`.
+2. Fill in `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or legacy `EXPO_PUBLIC_SUPABASE_ANON_KEY` if you prefer).
 
-3. **Native Mapbox SDK only:** if a prebuild/EAS step still needs a Mapbox **download** token, set the environment variable **`RNMAPBOX_MAPS_DOWNLOAD_TOKEN`** in your shell or EAS Secrets (do **not** use the deprecated `RNMapboxMapsDownloadToken` field in `app.config.js`). Many recent Mapbox SDKs no longer require it; see [@rnmapbox/maps](https://rnmapbox.github.io/docs/install).
-
-4. Install and start:
+3. Install and start:
 
    ```bash
    npm install
    npx expo start
    ```
 
-   Use a **development build** (prebuild + run) as described above, not Expo Go.
+   Use **Expo Go** or a dev client (`npx expo run:android` / `run:ios`). Maps use **Apple Maps** (iOS) and **Google Maps** (Android) via `react-native-maps`.
+
+4. After changing `.env`, restart Metro with a clean cache: `npx expo start --clear`.
 
 ## Architecture notes
 

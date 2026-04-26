@@ -1,6 +1,3 @@
-// Mapbox: set EXPO_PUBLIC_MAPBOX_TOKEN for the JS map.
-// For native prebuild, optional download token must NOT use RNMapboxMapsDownloadToken in the plugin
-// (deprecated) — set env RNMAPBOX_MAPS_DOWNLOAD_TOKEN in your shell or EAS if your SDK build still needs it.
 // @see README.md
 export default {
   expo: {
@@ -31,16 +28,6 @@ export default {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: [
-      [
-        '@rnmapbox/maps',
-        {
-          RNMapboxMapsImpl: 'mapbox',
-        },
-      ],
-    ],
-    extra: {
-      mapboxToken: process.env.EXPO_PUBLIC_MAPBOX_TOKEN,
-    },
+    plugins: [],
   },
 };
