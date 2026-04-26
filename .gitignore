@@ -1,0 +1,11 @@
+# Local env (keep .env.example tracked)
+**/.env
+!**/.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
