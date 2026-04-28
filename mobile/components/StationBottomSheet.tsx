@@ -1,9 +1,11 @@
 import { BottomSheetModal, BottomSheetView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import * as Location from 'expo-location';
 import { forwardRef, useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StationLatestRow } from '../types/station';
 import { insertPrice, upsertVote } from '../lib/api';
 import { formatDistanceToNow } from '../lib/dates';
+import { distanceMeters, VERIFY_PRICE_MAX_DISTANCE_M } from '../lib/geo';
 
 type Props = {
   station: StationLatestRow | null;
@@ -63,6 +65,35 @@ export const StationBottomSheet = forwardRef<BottomSheetModal, Props>(function S
       if (!station?.latest_price_id || !userId) return;
       setLoading(true);
       setMessage(null);
+
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLoading(false);
+        setMessage('Turn on location to confirm or dispute a price.');
+        return;
+      }
+
+      let pos: Location.LocationObject;
+      try {
+        pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      } catch {
+        setLoading(false);
+        setMessage('Could not read your location. Try again.');
+        return;
+      }
+
+      const metersAway = distanceMeters(
+        { latitude: pos.coords.latitude, longitude: pos.coords.longitude },
+        { latitude: station.latitude, longitude: station.longitude }
+      );
+      if (metersAway > VERIFY_PRICE_MAX_DISTANCE_M) {
+        setLoading(false);
+        setMessage(
+          `You must be within ${VERIFY_PRICE_MAX_DISTANCE_M} m of the station to verify this price (about ${Math.round(metersAway)} m away).`
+        );
+        return;
+      }
+
       const { error } = await upsertVote(station.latest_price_id, userId, t);
       setLoading(false);
       if (error) {
@@ -160,6 +191,10 @@ export const StationBottomSheet = forwardRef<BottomSheetModal, Props>(function S
                 <Text style={styles.btnDisputeText}>Dispute</Text>
               </Pressable>
             </View>
+            <Text style={styles.muted}>
+              Confirm or dispute only at the station (within {VERIFY_PRICE_MAX_DISTANCE_M} m, using your
+              current location).
+            </Text>
             <Text style={styles.muted}>
               {s.confirmation_count} confirms · {s.dispute_count} disputes
             </Text>

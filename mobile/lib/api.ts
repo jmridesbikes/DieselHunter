@@ -1,24 +1,21 @@
 import { supabase } from './supabase';
 import type { StationLatestRow } from '../types/station';
 
-export async function fetchStationsInBbox(
-  minLat: number,
-  maxLat: number,
-  minLng: number,
-  maxLng: number
+export async function fetchStationsNear(
+  latitude: number,
+  longitude: number,
+  takeN = 50
 ): Promise<{ data: StationLatestRow[] | null; error: Error | null }> {
-  const { data, error } = await supabase
-    .from('station_latest_prices_with_confidence')
-    .select('*')
-    .gte('latitude', minLat)
-    .lte('latitude', maxLat)
-    .gte('longitude', minLng)
-    .lte('longitude', maxLng);
+  const { data, error } = await supabase.rpc('fetch_stations_near', {
+    p_latitude: latitude,
+    p_longitude: longitude,
+    take_n: takeN,
+  });
 
   if (error) {
     return { data: null, error: new Error(error.message) };
   }
-  return { data: data as StationLatestRow[], error: null };
+  return { data: (data ?? []) as StationLatestRow[], error: null };
 }
 
 export async function insertPrice(

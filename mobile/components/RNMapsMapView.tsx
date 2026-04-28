@@ -7,33 +7,24 @@ type Props = {
   center: [number, number];
   locationReady: boolean;
   stations: StationLatestRow[];
-  onBoundsFromMap: (b: { ne: [number, number]; sw: [number, number] }) => void;
+  onRegionComplete: (r: Region) => void;
   onMarkerPress: (row: StationLatestRow) => void;
 };
-
-function regionToNE_SW(r: Region): { ne: [number, number]; sw: [number, number] } {
-  const halfLat = r.latitudeDelta / 2;
-  const halfLng = r.longitudeDelta / 2;
-  return {
-    ne: [r.longitude + halfLng, r.latitude + halfLat],
-    sw: [r.longitude - halfLng, r.latitude - halfLat],
-  };
-}
 
 export function RNMapsMapView({
   center,
   locationReady,
   stations,
-  onBoundsFromMap,
+  onRegionComplete,
   onMarkerPress,
 }: Props) {
   const mapRef = useRef<MapView | null>(null);
 
   const onRegionChangeComplete = useCallback(
     (r: Region) => {
-      onBoundsFromMap(regionToNE_SW(r));
+      onRegionComplete(r);
     },
-    [onBoundsFromMap]
+    [onRegionComplete]
   );
 
   useEffect(() => {
