@@ -1,22 +1,17 @@
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, Platform } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchStationsNear } from '../lib/api';
 import { distanceMeters } from '../lib/geo';
-import { hasSupabaseClientConfig, supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import type { StationLatestRow } from '../types/station';
 import { StationBottomSheet } from './StationBottomSheet';
 import { useAuth } from '../hooks/useAuth';
 import { RNMapsMapView } from './RNMapsMapView';
-
-function WebMapPlaceholder() {
-  return null;
-}
-
-const MapViewImpl = Platform.OS === 'web' ? WebMapPlaceholder : RNMapsMapView;
 
 const defaultCenter: [number, number] = [18.4241, -33.9249];
 
@@ -28,6 +23,7 @@ const ZONE_EXIT_LAT_SPAN_FRACTION = 0.15;
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { userId, ready, authError } = useAuth();
   const [stations, setStations] = useState<StationLatestRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,8 +38,6 @@ export function MapScreen() {
 
   const sheetRef = useRef<BottomSheetModal>(null);
   const fetchSeq = useRef(0);
-
-  const hasConfig = useMemo(() => hasSupabaseClientConfig(), []);
 
   const syncAnchor = useCallback((lng: number, lat: number) => {
     const p: [number, number] = [lng, lat];
@@ -145,39 +139,11 @@ export function MapScreen() {
     setSelected(null);
   }, []);
 
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.hint}>DieselHunter is built for iOS and Android (Apple / Google Maps).</Text>
-      </View>
-    );
-  }
-
-  if (!hasConfig) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.hint}>
-          Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or legacy
-          EXPO_PUBLIC_SUPABASE_ANON_KEY) in .env
-        </Text>
-      </View>
-    );
-  }
-
-  if (authError) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.err}>Auth: {authError.message}</Text>
-        <Text style={styles.hint}>Enable anonymous sign-in in the Supabase dashboard (Authentication → Providers).</Text>
-      </View>
-    );
-  }
-
-  if (!ready || !userId) {
+  if (authError || !ready || !userId) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.hint}>Signing in…</Text>
+        <Text style={styles.hint}>Loading map…</Text>
       </View>
     );
   }
@@ -185,7 +151,7 @@ export function MapScreen() {
   return (
     <BottomSheetModalProvider>
       <View style={styles.root}>
-        <MapViewImpl
+        <RNMapsMapView
           center={center}
           locationReady={locationReady}
           stations={stations}
@@ -212,7 +178,7 @@ export function MapScreen() {
         )}
 
         {err && (
-          <View style={styles.errorBar}>
+          <View style={[styles.errorBar, { bottom: tabBarHeight + 16 }]}>
             <Text style={styles.err}>{err}</Text>
           </View>
         )}
@@ -266,7 +232,6 @@ const styles = StyleSheet.create({
   loadingText: { color: '#c8d0e0' },
   errorBar: {
     position: 'absolute',
-    bottom: 32,
     left: 16,
     right: 16,
     padding: 10,

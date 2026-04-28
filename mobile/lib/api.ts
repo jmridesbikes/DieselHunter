@@ -18,6 +18,24 @@ export async function fetchStationsNear(
   return { data: (data ?? []) as StationLatestRow[], error: null };
 }
 
+/** All stations with a latest price, lowest first (nationwide leaderboard). */
+export async function fetchCheapestStations(
+  takeN = 50
+): Promise<{ data: StationLatestRow[] | null; error: Error | null }> {
+  const n = Math.min(Math.max(takeN, 1), 500);
+  const { data, error } = await supabase
+    .from('station_latest_prices_with_confidence')
+    .select('*')
+    .not('latest_price', 'is', null)
+    .order('latest_price', { ascending: true })
+    .limit(n);
+
+  if (error) {
+    return { data: null, error: new Error(error.message) };
+  }
+  return { data: (data ?? []) as StationLatestRow[], error: null };
+}
+
 export async function insertPrice(
   stationId: string,
   userId: string,
